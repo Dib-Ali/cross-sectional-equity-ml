@@ -22,7 +22,8 @@ def clean_price_data(df: pd.DataFrame) -> pd.DataFrame:
     df["ticker"] = df["ticker"].astype(str).str.upper().str.strip()
 
     # Convert date
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["date"] = pd.to_datetime(df["date"], errors="coerce", utc=True)
+    df["date"] = df["date"].dt.tz_localize(None)
 
     # Convert numerics
     numeric_cols = ["open", "high", "low", "close", "adj_close", "volume"]
