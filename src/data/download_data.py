@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import List
+import time
 
 import pandas as pd
 import yfinance as yf
@@ -11,64 +12,73 @@ def download_price_data(
     end_date: str,
 ) -> pd.DataFrame:
     """
-    Download OHLCV data from yfinance and return it in long format.
-    """
-    data = yf.download(
-        tickers=tickers,
-        start=start_date,
-        end=end_date,
-        group_by="ticker",
-        auto_adjust=False,
-        threads=True,
-        progress=False,
-    )
+    Download OHLCV data from yfinance in long format.
 
+    Downloads one ticker at a time for better reproducibility across machines.
+    Raises an error only if all tickers fail.
+    """
     frames = []
+    failed = []
 
     for ticker in tickers:
+        print(f"Downloading {ticker}...")
+
         try:
-            df_ticker = data[ticker].copy()
-        except Exception:
-            continue
+            stock = yf.Ticker(ticker)
+            df_ticker = stock.history(
+                start=start_date,
+                end=end_date,
+                auto_adjust=False,
+            )
 
-        if df_ticker.empty:
-            continue
+            if df_ticker is None or df_ticker.empty:
+                print(f"No data returned for {ticker}.")
+                failed.append(ticker)
+                continue
 
-        df_ticker = df_ticker.reset_index()
-        df_ticker["ticker"] = ticker
-        frames.append(df_ticker)
+            df_ticker = df_ticker.reset_index()
+            df_ticker["ticker"] = ticker
+
+            df_ticker.columns = [
+                str(c).strip().lower().replace(" ", "_") for c in df_ticker.columns
+            ]
+
+            if "adj_close" not in df_ticker.columns:
+                df_ticker["adj_close"] = df_ticker["close"]
+
+            expected_cols = [
+                "date", "ticker", "open", "high", "low",
+                "close", "adj_close", "volume"
+            ]
+            missing = [c for c in expected_cols if c not in df_ticker.columns]
+            if missing:
+                print(f"Skipping {ticker}: missing columns {missing}")
+                failed.append(ticker)
+                continue
+
+            df_ticker = df_ticker[expected_cols]
+            frames.append(df_ticker)
+
+            time.sleep(1)
+
+        except Exception as e:
+            print(f"Failed to download {ticker}: {e}")
+            failed.append(ticker)
 
     if not frames:
         raise ValueError("No data downloaded from yfinance.")
 
     df = pd.concat(frames, ignore_index=True)
-    df.columns = [str(c).strip().lower().replace(" ", "_") for c in df.columns]
+    df = df.sort_values(["date", "ticker"]).reset_index(drop=True)
 
-    rename_map = {
-        "adj_close": "adj_close",
-        "date": "date",
-        "open": "open",
-        "high": "high",
-        "low": "low",
-        "close": "close",
-        "volume": "volume",
-        "ticker": "ticker",
-    }
-    df = df.rename(columns=rename_map)
+    print(f"Successfully downloaded {len(frames)} ticker(s).")
+    if failed:
+        print("Failed tickers:", failed)
 
-    expected_cols = ["date", "ticker", "open", "high", "low", "close", "adj_close", "volume"]
-    missing = [c for c in expected_cols if c not in df.columns]
-    if missing:
-        raise ValueError(f"Missing expected columns after download: {missing}")
-
-    df = df[expected_cols].sort_values(["date", "ticker"]).reset_index(drop=True)
     return df
 
 
 def save_raw_data(df: pd.DataFrame, output_path: str = "data/raw/prices_raw.csv") -> None:
-    """
-    Save raw downloaded data to CSV.
-    """
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(path, index=False)
