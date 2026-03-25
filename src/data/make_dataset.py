@@ -55,6 +55,20 @@ def make_model_dataset(df: pd.DataFrame) -> pd.DataFrame:
         "target_5d",
     ]
     df = df.dropna(subset=required_cols).reset_index(drop=True)
+    
+    feature_cols = [
+    "return_1d",
+    "return_5d",
+    "return_20d",
+    "return_60d",
+    "volatility_20d",
+    "volume_avg_20d",
+    ]
+
+    # Cross-sectional z-score normalization per date
+    df[feature_cols] = df.groupby("date")[feature_cols].transform(
+        lambda x: (x - x.mean()) / (x.std() + 1e-8)
+    )
 
     return df
 
@@ -62,3 +76,4 @@ def make_model_dataset(df: pd.DataFrame) -> pd.DataFrame:
 def save_processed_data(df: pd.DataFrame, path: str = "data/processed/model_dataset.csv") -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(path, index=False)
+
