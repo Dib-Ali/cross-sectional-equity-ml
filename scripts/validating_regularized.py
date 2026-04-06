@@ -23,7 +23,7 @@ FEATURE_COLS = [
 TARGET_COLS = ["target_1d", "target_5d"]
 TRAIN_RATIO = 0.8
 TRANSACTION_COST_BPS = 10.0
-PERIODS_PER_YEAR = 252
+PERIODS_PER_YEAR = 52
 OUTPUT_DIR = "reports/tables"
 
 MODEL_CONFIGS: List[Dict[str, float | str]] = [
@@ -34,12 +34,12 @@ MODEL_CONFIGS: List[Dict[str, float | str]] = [
     },
     {
         "model_name": "lasso",
-        "alpha": 0.001,
+        "alpha": 0.01,
         "l1_ratio": 0.5,
     },
     {
         "model_name": "elasticnet",
-        "alpha": 0.001,
+        "alpha": 0.01,
         "l1_ratio": 0.5,
     },
 ]

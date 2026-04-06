@@ -28,3 +28,11 @@ finance/*
 
 ML_FinalProject_Proposal.docx
 proposal.txt
+csvfiles
+csvfile/*
+
+reports/*
+
+*.csv
+
+notes_after_first_run.txt

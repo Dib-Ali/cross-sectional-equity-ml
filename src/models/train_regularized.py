@@ -189,7 +189,7 @@ def compute_long_short_financial_metrics(
 	top_n: int = 10,
 	bottom_n: int = 10,
 	transaction_cost_bps: float = 10.0,
-	periods_per_year: int = 252,
+	periods_per_year: int = 52,
 ) -> Dict[str, float]:
 	"""
 	Compute long-short financial metrics from cross-sectional predictions.
@@ -288,7 +288,7 @@ def evaluate_regularized_predictions(
 	top_n: int = 10,
 	bottom_n: int = 10,
 	transaction_cost_bps: float = 10.0,
-	periods_per_year: int = 252,
+	periods_per_year: int = 52,
 ) -> Dict[str, float]:
 	"""
 	Return combined machine-learning and financial metrics in one dictionary.
@@ -326,7 +326,7 @@ def run_regularized_validation(
 	alpha: float = 1.0,
 	l1_ratio: float = 0.5,
 	transaction_cost_bps: float = 10.0,
-	periods_per_year: int = 252,
+	periods_per_year: int = 52,
 	random_state: int = 42,
 	max_iter: int = 10000,
 ) -> Tuple[Pipeline, pd.DataFrame, Dict[str, float]]:
