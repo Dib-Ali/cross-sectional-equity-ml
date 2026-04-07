@@ -36,3 +36,4 @@ reports/*
 *.csv
 
 notes_after_first_run.txt
+*.txt
