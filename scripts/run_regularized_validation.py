@@ -23,7 +23,7 @@ FEATURE_COLS = [
 TARGET_COLS = ["target_1d", "target_5d"]
 TRAIN_RATIO = 0.8
 TRANSACTION_COST_BPS = 10.0
-PERIODS_PER_YEAR = 52
+
 OUTPUT_DIR = "reports/tables"
 
 MODEL_CONFIGS: List[Dict[str, float | str]] = [
@@ -56,6 +56,12 @@ def _print_section(title: str) -> None:
     print(title)
     print("=" * 80)
 
+def _periods_per_year_for_target(target_col: str) -> int:
+    if target_col == "target_1d":
+        return 252
+    if target_col == "target_5d":
+        return 52
+    return 52
 
 def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
     required_cols = [DATE_COL, TICKER_COL] + FEATURE_COLS + [target_col]
@@ -75,7 +81,7 @@ def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
     print(f"Validation dates: {val_df[DATE_COL].min()} -> {val_df[DATE_COL].max()}")
 
     target_results: List[Dict[str, float | str]] = []
-
+    periods_per_year = _periods_per_year_for_target(target_col)
     for cfg in MODEL_CONFIGS:
         model_name = str(cfg["model_name"])
         alpha = float(cfg["alpha"])
@@ -91,7 +97,7 @@ def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
             alpha=alpha,
             l1_ratio=l1_ratio,
             transaction_cost_bps=TRANSACTION_COST_BPS,
-            periods_per_year=PERIODS_PER_YEAR,
+            periods_per_year=periods_per_year,
             random_state=42,
             max_iter=10000,
         )
