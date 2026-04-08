@@ -22,3 +22,18 @@ data/processed/*
 
 models_artifacts/*
 !models_artifacts/.gitkeep
+
+finance
+finance/*
+
+ML_FinalProject_Proposal.docx
+proposal.txt
+csvfiles
+csvfile/*
+
+reports/*
+
+*.csv
+
+notes_after_first_run.txt
+*.txt
