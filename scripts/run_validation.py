@@ -21,6 +21,14 @@ def main() -> None:
         "return_60d",
         "volatility_20d",
         "volume_avg_20d",
+        "momentum_ratio_1",
+        "momentum_ratio_2",
+        "risk_adjusted_return",
+        "interaction_1",
+        "interaction_2",
+        "rank_return_20d",
+        "volatility_regime",
+        "trend_consistency",
     ]
     target_col = "target_1d"
 

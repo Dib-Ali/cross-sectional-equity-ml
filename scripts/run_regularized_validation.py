@@ -19,6 +19,14 @@ FEATURE_COLS = [
     "return_60d",
     "volatility_20d",
     "volume_avg_20d",
+    "momentum_ratio_1",
+    "momentum_ratio_2",
+    "risk_adjusted_return",
+    "interaction_1",
+    "interaction_2",
+    "rank_return_20d",
+    "volatility_regime",
+    "trend_consistency",
 ]
 TARGET_COLS = ["target_1d", "target_5d"]
 TRAIN_RATIO = 0.8
