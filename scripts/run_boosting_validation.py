@@ -53,11 +53,7 @@ def _print_section(title: str) -> None:
 
 
 def _periods_per_year_for_target(target_col: str) -> int:
-    if target_col == "target_1d":
-        return 252
-    if target_col == "target_5d":
-        return 52
-    return 52
+    return 252
 
 
 def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:

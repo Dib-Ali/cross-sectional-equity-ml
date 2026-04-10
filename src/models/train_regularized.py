@@ -8,7 +8,11 @@ from sklearn.linear_model import ElasticNet, Lasso, Ridge
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from src.validation.evaluation_ml import compute_regression_metrics
+from src.validation.evaluation_ml import (
+    compute_regression_metrics,
+    compute_ic_series,
+    compute_icir,
+)
 
 RegularizedModelName = Literal["ridge", "lasso", "elasticnet"]
 
@@ -161,17 +165,27 @@ def train_elasticnet_regression(
 
 
 def predict_regularized_regression(
-	model: Pipeline,
-	df: pd.DataFrame,
-	feature_cols: List[str],
+    model: Pipeline,
+    df: pd.DataFrame,
+    feature_cols: List[str],
 ) -> pd.Series:
-	"""Generate predictions from a trained regularized model pipeline."""
-	missing_features = [col for col in feature_cols if col not in df.columns]
-	if missing_features:
-		raise ValueError(f"Missing feature columns: {missing_features}")
+    """
+    Generate predictions from a trained regularized model pipeline.
+    Drops NaN rows before prediction and reindexes back to full df index.
+    """
+    missing_features = [col for col in feature_cols if col not in df.columns]
+    if missing_features:
+        raise ValueError(f"Missing feature columns: {missing_features}")
 
-	preds = model.predict(df[feature_cols])
-	return pd.Series(preds, index=df.index, name="prediction")
+    clean = df[feature_cols].dropna()
+    if clean.empty:
+        raise ValueError("No valid rows after dropping NaNs.")
+
+    preds = model.predict(clean)
+
+    result = pd.Series(index=df.index, dtype=float, name="prediction")
+    result.loc[clean.index] = preds
+    return result
 
 
 def _max_drawdown(returns: pd.Series) -> float:
@@ -189,7 +203,7 @@ def compute_long_short_financial_metrics(
 	top_n: int = 10,
 	bottom_n: int = 10,
 	transaction_cost_bps: float = 10.0,
-	periods_per_year: int = 52,
+	periods_per_year: int = 252,
 ) -> Dict[str, float]:
 	"""
 	Compute long-short financial metrics from cross-sectional predictions.
@@ -281,39 +295,52 @@ def compute_long_short_financial_metrics(
 
 
 def evaluate_regularized_predictions(
-	df: pd.DataFrame,
-	date_col: str,
-	target_col: str,
-	prediction_col: str = "prediction",
-	top_n: int = 10,
-	bottom_n: int = 10,
-	transaction_cost_bps: float = 10.0,
-	periods_per_year: int = 52,
+    df: pd.DataFrame,
+    date_col: str,
+    target_col: str,
+    prediction_col: str = "prediction",
+    top_n: int = 10,
+    bottom_n: int = 10,
+    transaction_cost_bps: float = 10.0,
+    periods_per_year: int = 252,
 ) -> Dict[str, float]:
-	"""
-	Return combined machine-learning and financial metrics in one dictionary.
-	"""
-	if target_col not in df.columns:
-		raise ValueError(f"Missing target column: {target_col}")
-	if prediction_col not in df.columns:
-		raise ValueError(f"Missing prediction column: {prediction_col}")
+    """
+    Return combined machine-learning and financial metrics in one dictionary.
+    """
+    if target_col not in df.columns:
+        raise ValueError(f"Missing target column: {target_col}")
+    if prediction_col not in df.columns:
+        raise ValueError(f"Missing prediction column: {prediction_col}")
 
-	ml_metrics = compute_regression_metrics(df[target_col], df[prediction_col])
-	financial_metrics = compute_long_short_financial_metrics(
-		df=df,
-		date_col=date_col,
-		prediction_col=prediction_col,
-		realized_return_col=target_col,
-		top_n=top_n,
-		bottom_n=bottom_n,
-		transaction_cost_bps=transaction_cost_bps,
-		periods_per_year=periods_per_year,
-	)
+    ml_metrics = compute_regression_metrics(df[target_col], df[prediction_col])
 
-	return {
-		**ml_metrics,
-		**financial_metrics,
-	}
+    ic_series = compute_ic_series(
+        df=df,
+        date_col=date_col,
+        target_col=target_col,
+        prediction_col=prediction_col,
+    )
+
+    ml_metrics["ic_mean"] = float(ic_series.mean())
+    ml_metrics["ic_std"] = float(ic_series.std())
+    ml_metrics["icir"] = compute_icir(ic_series)
+    ml_metrics["ic_pct_positive"] = float((ic_series > 0).mean())
+
+    financial_metrics = compute_long_short_financial_metrics(
+        df=df,
+        date_col=date_col,
+        prediction_col=prediction_col,
+        realized_return_col=target_col,
+        top_n=top_n,
+        bottom_n=bottom_n,
+        transaction_cost_bps=transaction_cost_bps,
+        periods_per_year=periods_per_year,
+    )
+
+    return {
+        **ml_metrics,
+        **financial_metrics,
+    }
 
 
 def run_regularized_validation(
@@ -326,7 +353,7 @@ def run_regularized_validation(
 	alpha: float = 1.0,
 	l1_ratio: float = 0.5,
 	transaction_cost_bps: float = 10.0,
-	periods_per_year: int = 52,
+	periods_per_year: int = 252,
 	random_state: int = 42,
 	max_iter: int = 10000,
 ) -> Tuple[Pipeline, pd.DataFrame, Dict[str, float]]:
