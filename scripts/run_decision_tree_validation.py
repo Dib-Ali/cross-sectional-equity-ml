@@ -102,8 +102,8 @@ def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
             transaction_cost_bps=TRANSACTION_COST_BPS,
             periods_per_year=periods_per_year,
             random_state=42,
-            top_n=2,
-            bottom_n=2,
+            top_n=10,
+            bottom_n=10,
         )
         _ = model
 

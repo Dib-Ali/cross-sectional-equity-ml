@@ -5,7 +5,11 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor
 
-from src.validation.evaluation_ml import compute_regression_metrics
+from src.validation.evaluation_ml import (
+    compute_regression_metrics,
+    compute_ic_series,
+    compute_icir,
+)
 
 
 def _validate_feature_target_columns(
@@ -95,7 +99,7 @@ def compute_long_short_financial_metrics(
     top_n: int = 10,
     bottom_n: int = 10,
     transaction_cost_bps: float = 10.0,
-    periods_per_year: int = 52,
+    periods_per_year: int = 252,
 ) -> Dict[str, float]:
     required = [date_col, "ticker", prediction_col, realized_return_col]
     missing = [c for c in required if c not in df.columns]
@@ -178,7 +182,7 @@ def evaluate_boosting_predictions(
     top_n: int = 10,
     bottom_n: int = 10,
     transaction_cost_bps: float = 10.0,
-    periods_per_year: int = 52,
+    periods_per_year: int = 252,
 ) -> Dict[str, float]:
     if target_col not in df.columns:
         raise ValueError(f"Missing target column: {target_col}")
@@ -186,6 +190,17 @@ def evaluate_boosting_predictions(
         raise ValueError(f"Missing prediction column: {prediction_col}")
 
     ml_metrics = compute_regression_metrics(df[target_col], df[prediction_col])
+    ic_series = compute_ic_series(
+    df=df,
+    date_col=date_col,
+    target_col=target_col,
+    prediction_col=prediction_col,
+)
+
+    ml_metrics["ic_mean"] = float(ic_series.mean())
+    ml_metrics["ic_std"] = float(ic_series.std())
+    ml_metrics["icir"] = compute_icir(ic_series)
+    ml_metrics["ic_pct_positive"] = float((ic_series > 0).mean())
     financial_metrics = compute_long_short_financial_metrics(
         df=df,
         date_col=date_col,
@@ -210,7 +225,7 @@ def run_boosting_validation(
     target_col: str,
     date_col: str = "date",
     transaction_cost_bps: float = 10.0,
-    periods_per_year: int = 52,
+    periods_per_year: int = 252,
     model_params: Optional[Dict] = None,
 ) -> Tuple[GradientBoostingRegressor, pd.DataFrame, Dict[str, float]]:
     _validate_feature_target_columns(train_df, feature_cols, target_col)
