@@ -48,6 +48,10 @@ def train_svr_regression(
     if clean_df.empty:
         raise ValueError("No valid rows remain after dropping NaNs.")
 
+    max_train_rows = 30000
+    if len(clean_df) > max_train_rows:
+        clean_df = clean_df.sample(n=max_train_rows, random_state=42).sort_index()
+
     X_train = clean_df[feature_cols]
     y_train = clean_df[target_col]
 

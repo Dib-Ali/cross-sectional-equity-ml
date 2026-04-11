@@ -28,7 +28,7 @@ FEATURE_COLS = [
     "volatility_regime",
     "trend_consistency",
 ]
-TARGET_COLS = ["target_1d", "target_5d"]
+TARGET_COLS = ["target_5d"]
 TRAIN_RATIO = 0.8
 TRANSACTION_COST_BPS = 10.0
 OUTPUT_DIR = "reports/tables"
