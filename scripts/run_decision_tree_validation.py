@@ -37,9 +37,21 @@ OUTPUT_DIR = "reports/tables"
 MODEL_CONFIGS: List[Dict[str, float | int | None | str]] = [
     {
         "model_name": "decision_tree",
+        "max_depth": 3,
+        "min_samples_split": 20,
+        "min_samples_leaf": 10,
+    },
+    {
+        "model_name": "decision_tree",
         "max_depth": 5,
         "min_samples_split": 20,
         "min_samples_leaf": 10,
+    },
+    {
+        "model_name": "decision_tree",
+        "max_depth": 7,
+        "min_samples_split": 10,
+        "min_samples_leaf": 5,
     },
 ]
 
