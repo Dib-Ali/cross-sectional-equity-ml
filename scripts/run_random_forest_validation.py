@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 from typing import Dict, List
 
 import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.models.train_random_forest_model import run_random_forest_validation
 from src.validation.splitters import chronological_train_validation_split
@@ -38,7 +44,28 @@ MODEL_CONFIGS: List[Dict[str, float | int | None | str]] = [
     {
         "model_name": "random_forest",
         "n_estimators": 100,
+        "max_depth": 3,
+        "min_samples_split": 20,
+        "min_samples_leaf": 10,
+    },
+    {
+        "model_name": "random_forest",
+        "n_estimators": 200,
         "max_depth": 5,
+        "min_samples_split": 20,
+        "min_samples_leaf": 10,
+    },
+    {
+        "model_name": "random_forest",
+        "n_estimators": 300,
+        "max_depth": 5,
+        "min_samples_split": 10,
+        "min_samples_leaf": 5,
+    },
+    {
+        "model_name": "random_forest",
+        "n_estimators": 300,
+        "max_depth": None,
         "min_samples_split": 20,
         "min_samples_leaf": 10,
     },
@@ -58,11 +85,7 @@ def _print_section(title: str) -> None:
 
 
 def _periods_per_year_for_target(target_col: str) -> int:
-    if target_col == "target_1d":
-        return 252
-    if target_col == "target_5d":
-        return 52
-    return 52
+    return 252
 
 
 def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
@@ -112,7 +135,7 @@ def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
 
         scored_path = os.path.join(
             OUTPUT_DIR,
-            f"random_forest_scored_{target_col}_{model_name}.csv",
+            f"random_forest_scored_{target_col}_n{n_estimators}_d{max_depth}_split{min_samples_split}_leaf{min_samples_leaf}.csv",
         )
         scored_val.to_csv(scored_path, index=False)
 
