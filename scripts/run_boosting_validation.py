@@ -76,22 +76,8 @@ def _periods_per_year_for_target(target_col: str) -> int:
     return 252
 
 
-def _resolve_feature_cols(df: pd.DataFrame) -> List[str]:
-    available_features = [col for col in FEATURE_COLS if col in df.columns]
-    missing_features = [col for col in FEATURE_COLS if col not in df.columns]
-
-    if missing_features:
-        print(f"Missing optional features (skipping): {missing_features}")
-
-    if not available_features:
-        raise ValueError("No expected feature columns are present in the dataset.")
-
-    return available_features
-
-
 def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
-    feature_cols = _resolve_feature_cols(df)
-    required_cols = [DATE_COL, TICKER_COL] + feature_cols + [target_col]
+    required_cols = [DATE_COL, TICKER_COL] + FEATURE_COLS + [target_col]
     _validate_columns(df, required_cols)
 
     target_df = df[required_cols].dropna().copy()
@@ -122,7 +108,7 @@ def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
         model, scored_val, metrics = run_boosting_validation(
             train_df=train_df,
             val_df=val_df,
-            feature_cols=feature_cols,
+            feature_cols=FEATURE_COLS,
             target_col=target_col,
             date_col=DATE_COL,
             transaction_cost_bps=TRANSACTION_COST_BPS,
