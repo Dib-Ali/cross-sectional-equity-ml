@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 from typing import Dict, List
 
 import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.models.train_decision_tree_model import run_decision_tree_validation
 from src.validation.splitters import chronological_train_validation_split
@@ -37,9 +43,21 @@ OUTPUT_DIR = "reports/tables"
 MODEL_CONFIGS: List[Dict[str, float | int | None | str]] = [
     {
         "model_name": "decision_tree",
+        "max_depth": 3,
+        "min_samples_split": 20,
+        "min_samples_leaf": 10,
+    },
+    {
+        "model_name": "decision_tree",
         "max_depth": 5,
         "min_samples_split": 20,
         "min_samples_leaf": 10,
+    },
+    {
+        "model_name": "decision_tree",
+        "max_depth": 7,
+        "min_samples_split": 10,
+        "min_samples_leaf": 5,
     },
 ]
 
