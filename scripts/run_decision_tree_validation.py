@@ -14,7 +14,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.models.train_decision_tree_model import run_decision_tree_validation
 from src.validation.splitters import chronological_train_validation_split
 
-
+from src.validation.evaluation_ml import compute_ic_series
+import pandas as pd
 DATA_PATH = "data/processed/model_dataset.csv"
 DATE_COL = "date"
 TICKER_COL = "ticker"
@@ -79,7 +80,7 @@ def _periods_per_year_for_target(target_col: str) -> int:
         return 252
     if target_col == "target_5d":
         return 52
-    return 52
+    return 252
 
 
 def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
@@ -124,7 +125,21 @@ def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
             bottom_n=10,
         )
         _ = model
+        ic_series = compute_ic_series(
+    df=scored_val,
+    date_col=DATE_COL,
+    target_col=target_col,
+    prediction_col="prediction",
+)
 
+        ic_series.index = pd.to_datetime(ic_series.index)
+
+        ic_2023 = ic_series[ic_series.index.year == 2023].mean()
+        ic_2024 = ic_series[ic_series.index.year == 2024].mean()
+
+        print(f"--- IC Stability ({model_name} | {target_col}) ---")
+        print(f"IC 2023: {ic_2023:.4f}")
+        print(f"IC 2024: {ic_2024:.4f}")
         scored_path = os.path.join(
             OUTPUT_DIR,
             f"decision_tree_scored_{target_col}_{model_name}.csv",

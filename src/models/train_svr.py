@@ -131,7 +131,10 @@ def compute_long_short_financial_metrics(
         raise ValueError("No valid rows available to compute financial metrics.")
 
     cost_rate = transaction_cost_bps / 10000.0
-
+    if realized_return_col == "target_5d":
+        unique_dates = sorted(work[date_col].dropna().unique())
+        selected_dates = unique_dates[::5]
+        work = work[work[date_col].isin(selected_dates)].copy()
     period_returns: List[float] = []
     period_turnover: List[float] = []
     prev_weights: Dict[str, float] | None = None

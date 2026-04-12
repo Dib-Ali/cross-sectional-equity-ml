@@ -114,7 +114,10 @@ def compute_long_short_financial_metrics(
         raise ValueError("No valid rows available to compute financial metrics.")
 
     cost_rate = transaction_cost_bps / 10000.0
-
+    if realized_return_col == "target_5d":
+        unique_dates = sorted(work[date_col].dropna().unique())
+        selected_dates = unique_dates[::5]
+        work = work[work[date_col].isin(selected_dates)].copy()
     period_returns = []
     period_turnover = []
     prev_weights = None
@@ -240,7 +243,7 @@ def run_boosting_validation(
 
     scored_val = val_df.copy()
     scored_val["prediction"] = predict_gradient_boosting_regressor(model, scored_val, feature_cols)
-
+    scored_val = scored_val.drop_duplicates(subset=["date", "ticker"], keep="last")
     metrics = evaluate_boosting_predictions(
         df=scored_val,
         date_col=date_col,
