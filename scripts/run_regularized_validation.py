@@ -44,6 +44,8 @@ RIDGE_ALPHA_GRID = [0.001, 0.01, 0.1, 1.0, 10.0]
 LASSO_ALPHA_GRID = [0.00005, 0.0001, 0.0005, 0.001, 0.005]
 ELASTICNET_ALPHA_GRID = [0.00005, 0.0001, 0.0005, 0.001]
 ELASTICNET_L1_RATIO_GRID = [0.2, 0.5, 0.8]
+LASSO_ALPHA_GRID_1D = [0.000005, 0.00001, 0.00005, 0.0001, 0.0005]
+ELASTICNET_ALPHA_GRID_1D = [0.000005, 0.00001, 0.00005, 0.0001]
 
 def _validate_columns(df: pd.DataFrame, cols: List[str]) -> None:
     missing = [c for c in cols if c not in df.columns]
@@ -114,7 +116,11 @@ def find_best_regularized_params(
     return best_params
 
 def _periods_per_year_for_target(target_col: str) -> int:
-   return 252
+    if target_col == "target_1d":
+        return 252
+    if target_col == "target_5d":
+        return 52
+    return 252
 
 def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
     required_cols = [DATE_COL, TICKER_COL] + FEATURE_COLS + [target_col]
@@ -146,20 +152,22 @@ def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
                 alpha_grid=RIDGE_ALPHA_GRID,
             )
         elif model_name == "lasso":
+            alpha_grid = LASSO_ALPHA_GRID_1D if target_col == "target_1d" else LASSO_ALPHA_GRID
             best_params = find_best_regularized_params(
                 train_df=train_df,
                 feature_cols=FEATURE_COLS,
                 target_col=target_col,
                 model_name="lasso",
-                alpha_grid=LASSO_ALPHA_GRID,
+                alpha_grid=alpha_grid,
             )
         elif model_name == "elasticnet":
+            alpha_grid = ELASTICNET_ALPHA_GRID_1D if target_col == "target_1d" else ELASTICNET_ALPHA_GRID
             best_params = find_best_regularized_params(
                 train_df=train_df,
                 feature_cols=FEATURE_COLS,
                 target_col=target_col,
                 model_name="elasticnet",
-                alpha_grid=ELASTICNET_ALPHA_GRID,
+                alpha_grid=alpha_grid,
                 l1_ratio_grid=ELASTICNET_L1_RATIO_GRID,
             )
         else:
@@ -188,6 +196,22 @@ def _run_one_target(df: pd.DataFrame, target_col: str) -> pd.DataFrame:
             max_iter=10000,
         )
         _ = model
+        scored_val = scored_val.drop_duplicates(subset=["date", "ticker"], keep="last")
+        # ── IC stability: 2023 vs 2024 ─────────────────────────────────────────────
+        from src.validation.evaluation_ml import compute_ic_series
+        import pandas as pd
+
+        ic_series = compute_ic_series(scored_val, 'date', target_col, 'prediction')
+        
+        ic_series.index = pd.to_datetime(ic_series.index)
+
+        ic_2023 = ic_series[ic_series.index.year == 2023].mean()
+        ic_2024 = ic_series[ic_series.index.year == 2024].mean()
+
+        print(f"\n--- IC Stability Check ({model_name} | {target_col}) ---")
+        print(f"  IC 2023: {ic_2023:.4f}")
+        print(f"  IC 2024: {ic_2024:.4f}")
+        print(f"  Stable: {ic_2023 > 0 and ic_2024 > 0}")
 
         scored_path = os.path.join(
             OUTPUT_DIR,
