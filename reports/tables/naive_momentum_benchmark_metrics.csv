@@ -1,0 +1,2 @@
+model,signal,portfolio_mean_return,portfolio_volatility,portfolio_cumulative_return,portfolio_sharpe,portfolio_max_drawdown,portfolio_turnover_avg,portfolio_num_periods
+naive_5d_momentum,return_5d,-0.010846391749823645,0.035308998207004866,-0.43867231720380695,-2.2151419521157836,-0.5125260815729156,3.5,50.0
