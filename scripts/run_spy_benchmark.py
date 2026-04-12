@@ -115,35 +115,40 @@ def compute_strategy_period_returns(
 
 
 def download_spy_returns(start_date: pd.Timestamp, end_date: pd.Timestamp) -> pd.DataFrame:
-    # Add some buffer before/after to ensure enough data for 5-day pct_change
-    start = (start_date - pd.Timedelta(days=10)).strftime("%Y-%m-%d")
-    end = (end_date + pd.Timedelta(days=10)).strftime("%Y-%m-%d")
+    start = (start_date - pd.Timedelta(days=15)).strftime("%Y-%m-%d")
+    end = (end_date + pd.Timedelta(days=15)).strftime("%Y-%m-%d")
 
     spy = yf.download("SPY", start=start, end=end, auto_adjust=True, progress=False)
 
     if spy.empty:
         raise ValueError("Downloaded SPY data is empty.")
 
-    spy = spy.reset_index()
-    # yfinance may return Date or index name variations
-    if "Date" in spy.columns:
-        spy.rename(columns={"Date": "date"}, inplace=True)
-    elif "date" not in spy.columns:
-        spy.rename(columns={spy.columns[0]: "date"}, inplace=True)
+    if isinstance(spy.columns, pd.MultiIndex):
+        spy.columns = [
+            "_".join([str(x) for x in col if str(x) != ""]).strip("_")
+            for col in spy.columns.to_list()
+        ]
 
-    spy["date"] = pd.to_datetime(spy["date"], errors="coerce")
+    spy = spy.reset_index()
+
+    possible_date_cols = ["Date", "Datetime", "index", "date"]
+    date_col = next((c for c in possible_date_cols if c in spy.columns), None)
+    if date_col is None:
+        raise ValueError(f"SPY data columns are unexpected: {spy.columns.tolist()}")
+
+    spy = spy.rename(columns={date_col: "date"})
+    spy["date"] = pd.to_datetime(spy["date"], errors="coerce").dt.tz_localize(None).dt.normalize()
     spy = spy.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
 
-    if "Close" not in spy.columns:
-        # fallback in case adjusted close naming differs
-        close_col = [c for c in spy.columns if str(c).lower() == "close"]
-        if not close_col:
-            raise ValueError("Could not find SPY close column.")
-        close_name = close_col[0]
-    else:
-        close_name = "Close"
+    close_candidates = [c for c in spy.columns if "close" in str(c).lower()]
+    if not close_candidates:
+        raise ValueError(f"Could not find SPY close column. Columns: {spy.columns.tolist()}")
 
-    spy["spy_return_5d"] = spy[close_name].pct_change(5)
+    close_name = close_candidates[0]
+
+    # Compute 5-trading-day forward return on every SPY trading day
+    spy["spy_return_5d"] = spy[close_name].shift(-5) / spy[close_name] - 1.0
+
     return spy[["date", "spy_return_5d"]].dropna().copy()
 
 
@@ -193,9 +198,17 @@ def main() -> None:
 
     spy_df = download_spy_returns(start_date=start_date, end_date=end_date)
 
-    merged = strategy_df.merge(spy_df, on="date", how="inner")
-    if merged.empty:
-        raise ValueError("No overlapping dates between strategy periods and SPY returns.")
+    strategy_df["date"] = pd.to_datetime(strategy_df["date"], errors="coerce").dt.tz_localize(None).dt.normalize()
+    spy_df["date"] = pd.to_datetime(spy_df["date"], errors="coerce").dt.tz_localize(None).dt.normalize()
+
+    merged = strategy_df.merge(spy_df, on="date", how="left")
+
+    if merged["spy_return_5d"].isna().all():
+        print("Strategy dates sample:", strategy_df["date"].head().tolist())
+        print("SPY dates sample:", spy_df["date"].head().tolist())
+        raise ValueError("SPY returns could not be aligned to strategy dates.")
+
+    merged = merged.dropna(subset=["spy_return_5d"]).copy()
 
     strategy_metrics = compute_summary_metrics(merged["strategy_return"], PERIODS_PER_YEAR)
     spy_metrics = compute_summary_metrics(merged["spy_return_5d"], PERIODS_PER_YEAR)
