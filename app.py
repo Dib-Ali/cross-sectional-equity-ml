@@ -155,3 +155,112 @@ c4.metric(
 
 st.markdown("<hr/>", unsafe_allow_html=True)
 
+# ---------------------------------------------------------------------------
+# Section 2 — Date selector + rankings table
+# ---------------------------------------------------------------------------
+st.markdown("#### Weekly Stock Rankings — Predicted vs Realised Return")
+st.markdown(
+    "<span style='color:#6c757d;font-size:0.85rem;'>"
+    "Select a rebalancing date to view the model's cross-sectional ranking. "
+    "🟢 Top 10 = long positions · 🔴 Bottom 10 = short positions."
+    "</span>",
+    unsafe_allow_html=True,
+)
+
+# Use every-5th date to match backtest rebalancing periods
+all_dates   = sorted(scored_df["date"].unique())
+period_dates = all_dates[::5]
+
+# Format for display
+date_labels = {d: d.strftime("%Y-%m-%d") for d in period_dates}
+
+selected_date = st.selectbox(
+    "Select rebalancing date",
+    options=period_dates,
+    format_func=lambda d: date_labels[d],
+    index=len(period_dates) // 2,   # default to middle of test period
+)
+
+# Filter and rank
+day_df = (
+    scored_df[scored_df["date"] == selected_date]
+    .copy()
+    .sort_values("prediction", ascending=False)
+    .reset_index(drop=True)
+)
+day_df["Rank"] = day_df.index + 1
+day_df = day_df.rename(columns={
+    "ticker":     "Ticker",
+    "prediction": "Predicted Score",
+    "target_5d":  "Realised Return",
+})
+display_df = day_df[["Rank", "Ticker", "Predicted Score", "Realised Return"]].copy()
+
+n_stocks = len(display_df)
+
+# ------ Styling ------
+LONG_BG  = "#eaf7f2"   # light green
+SHORT_BG = "#fdecea"   # light red
+ROW_ALT  = "#fafafa"
+
+def _style_table(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
+    n = len(df)
+    top10_idx    = list(range(min(10, n)))
+    bottom10_idx = list(range(max(0, n - 10), n))
+
+    def highlight(row):
+        i = row.name
+        if i in top10_idx:
+            return ["background-color: " + LONG_BG] * len(row)
+        elif i in bottom10_idx:
+            return ["background-color: " + SHORT_BG] * len(row)
+        elif i % 2 == 0:
+            return ["background-color: " + ROW_ALT] * len(row)
+        else:
+            return [""] * len(row)
+
+    styled = (
+        df.style
+        .apply(highlight, axis=1)
+        .format({
+            "Predicted Score":  "{:.5f}",
+            "Realised Return":  "{:+.4f}",
+        })
+        .set_properties(**{"font-size": "0.88rem"})
+        .set_table_styles([
+            {"selector": "thead th",
+             "props": [("background-color", "#f1f3f5"),
+                       ("font-weight", "600"),
+                       ("font-size", "0.82rem"),
+                       ("text-align", "left"),
+                       ("border-bottom", "2px solid #dee2e6")]},
+            {"selector": "tbody tr:hover",
+             "props": [("filter", "brightness(0.97)")]},
+        ])
+        .hide(axis="index")
+    )
+    return styled
+
+
+# Summary stats row above table
+top10_ret  = display_df.head(10)["Realised Return"].mean()
+bot10_ret  = display_df.tail(10)["Realised Return"].mean()
+ls_spread  = top10_ret - bot10_ret
+
+sm1, sm2, sm3, sm4 = st.columns(4)
+sm1.metric("Date",              selected_date.strftime("%d %b %Y"))
+sm2.metric("Top-10 Avg Return", f"{top10_ret:+.4f}",
+           delta="long leg", delta_color="off")
+sm3.metric("Bottom-10 Avg Return", f"{bot10_ret:+.4f}",
+           delta="short leg", delta_color="off")
+sm4.metric("L/S Spread",        f"{ls_spread:+.4f}",
+           delta="alpha proxy", delta_color="normal" if ls_spread > 0 else "inverse")
+
+st.dataframe(
+    _style_table(display_df),
+    use_container_width=True,
+    height=min(42 * n_stocks + 38, 680),
+)
+
+st.markdown("<hr/>", unsafe_allow_html=True)
+
