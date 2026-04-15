@@ -264,3 +264,28 @@ st.dataframe(
 
 st.markdown("<hr/>", unsafe_allow_html=True)
 
+# ---------------------------------------------------------------------------
+# Section 3 — Charts (static PNGs side by side)
+# ---------------------------------------------------------------------------
+st.markdown("#### Strategy Visualisations")
+
+img_col1, img_col2 = st.columns(2)
+
+with img_col1:
+    equity_path = PLOTS / "plot3_equity_curves.png"
+    if equity_path.exists():
+        st.image(str(equity_path), use_container_width=True)
+        st.caption("Equity Curves — Ensemble vs SPY vs Naive Momentum (Test 2024)")
+    else:
+        st.warning(f"Plot not found: {equity_path}")
+
+with img_col2:
+    ic_path = PLOTS / "plot2_ic_over_time.png"
+    if ic_path.exists():
+        st.image(str(ic_path), use_container_width=True)
+        st.caption("IC Over Time — Validation Period (2023–2024), 10-period rolling mean")
+    else:
+        st.warning(f"Plot not found: {ic_path}")
+
+st.markdown("<hr/>", unsafe_allow_html=True)
+
