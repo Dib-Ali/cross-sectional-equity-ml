@@ -289,3 +289,41 @@ with img_col2:
 
 st.markdown("<hr/>", unsafe_allow_html=True)
 
+# ---------------------------------------------------------------------------
+# Footer
+# ---------------------------------------------------------------------------
+st.markdown(
+    "<div class='footer'>"
+    "Cross-Sectional Equity ML · Machine Learning Course Project · "
+    "Ensemble: Ridge 40% + ElasticNet 60% · Universe: S&P 100 · "
+    "Data: 2015–2024 via yfinance"
+    "</div>",
+    unsafe_allow_html=True,
+)
+
+# ---------------------------------------------------------------------------
+# Console output: best demo dates (printed once at startup)
+# ---------------------------------------------------------------------------
+@st.cache_data
+def _find_best_demo_dates() -> pd.DataFrame:
+    res = []
+    for dt in period_dates:
+        day = scored_df[scored_df["date"] == dt].sort_values("prediction", ascending=False)
+        if len(day) < 10:
+            continue
+        res.append({
+            "date":             dt.strftime("%Y-%m-%d"),
+            "top10_avg_return": day.head(10)["Realised Return"].mean()
+            if "Realised Return" in day.columns
+            else day.head(10)["target_5d"].mean(),
+        })
+    return pd.DataFrame(res).sort_values("top10_avg_return", ascending=False)
+
+
+_demo = _find_best_demo_dates()
+print("\n" + "=" * 60)
+print("BEST DEMO DATES (top-10 long leg highest avg realised return)")
+print("=" * 60)
+for i, row in _demo.head(3).iterrows():
+    print(f"  {row['date']}  →  top-10 avg realised return = {row['top10_avg_return']:+.4f}")
+print("=" * 60 + "\n")
