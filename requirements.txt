@@ -6,3 +6,5 @@ seaborn
 yfinance
 tqdm
 pyyaml
+streamlit
+pillow

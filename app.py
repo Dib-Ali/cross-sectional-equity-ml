@@ -6,10 +6,8 @@ Run with:
     streamlit run app.py
 """
 
-import os
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -28,23 +26,20 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-        /* Page background */
         .stApp { background-color: #ffffff; }
 
-        /* Top metric cards */
         [data-testid="metric-container"] {
             background: #f8f9fa;
             border: 1px solid #e9ecef;
-            border-radius: 8px;
-            padding: 16px 20px;
+            border-radius: 10px;
+            padding: 18px 22px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
         }
         [data-testid="stMetricLabel"] { font-size: 0.82rem; color: #6c757d; }
-        [data-testid="stMetricValue"] { font-size: 1.6rem; font-weight: 700; }
+        [data-testid="stMetricValue"] { font-size: 1.7rem; font-weight: 700; color: #212529; }
 
-        /* Section dividers */
         hr { border: none; border-top: 1px solid #e9ecef; margin: 1.2rem 0; }
 
-        /* Footer */
         .footer {
             text-align: center;
             color: #adb5bd;
@@ -54,12 +49,11 @@ st.markdown(
             border-top: 1px solid #e9ecef;
         }
 
-        /* Table rank badges */
-        .rank-long  { color: #1a9e78; font-weight: 700; }
-        .rank-short { color: #e03434; font-weight: 700; }
+        .block-container { padding-top: 1.5rem; max-width: 1400px; }
 
-        /* Remove default Streamlit padding on top */
-        .block-container { padding-top: 1.5rem; }
+        h1, h2, h3, h4 { color: #212529; }
+
+        .subtitle { color: #6c757d; font-size: 0.9rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -70,10 +64,10 @@ st.markdown(
 # ---------------------------------------------------------------------------
 BASE = Path(__file__).parent
 TABLES = BASE / "reports" / "tables"
-PLOTS  = BASE / "plots"
+PLOTS = BASE / "reports" / "plots"
 
 # ---------------------------------------------------------------------------
-# Data loading
+# Data loading — cached at startup
 # ---------------------------------------------------------------------------
 @st.cache_data
 def load_metrics() -> pd.DataFrame:
@@ -90,55 +84,58 @@ def load_scored() -> pd.DataFrame:
 @st.cache_data
 def load_aligned() -> pd.DataFrame:
     df = pd.read_csv(TABLES / "spy_benchmark_aligned_returns.csv")
-    df["date"] = pd.to_datetime(df["date"])
+    df["date"] = pd.to_datetime(df["date"]).dt.normalize()
     return df
 
 
 metrics_df = load_metrics()
-scored_df  = load_scored()
+scored_df = load_scored()
 aligned_df = load_aligned()
 
 # Pull test-period row for metric cards
 test_row = metrics_df[metrics_df["stage"] == "test"].iloc[0]
+
+# Rebalance dates = 50 weekly rebalance points actually used in the backtest
+rebalance_dates = sorted(aligned_df["date"].unique())
 
 # ---------------------------------------------------------------------------
 # Header
 # ---------------------------------------------------------------------------
 st.markdown("## Equity ML Strategy — Demo Dashboard")
 st.markdown(
-    "<span style='color:#6c757d;font-size:0.9rem;'>"
+    "<div class='subtitle'>"
     "Cross-sectional factor model · Ensemble (Ridge 40% + ElasticNet 60%) · "
     "Test period: Jan – Dec 2024 · Universe: S&P 100"
-    "</span>",
+    "</div>",
     unsafe_allow_html=True,
 )
 
 st.markdown("<hr/>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
-# Section 1 — Metric Cards
+# Section 1 — Metric Cards (always visible)
 # ---------------------------------------------------------------------------
 st.markdown("#### Strategy Performance — Test Period (2024, out-of-sample)")
 
-c1, c2, c3, c4 = st.columns(4)
+ic_mean = float(test_row["ic_mean"])
+icir = float(test_row["icir"])
+sharpe = float(test_row["portfolio_sharpe"])
+cum_ret = float(test_row["portfolio_cumulative_return"])
+max_dd = float(test_row["portfolio_max_drawdown"])
 
-ic_mean   = float(test_row["ic_mean"])
-icir      = float(test_row["icir"])
-cum_ret   = float(test_row["portfolio_cumulative_return"])
-max_dd    = float(test_row["portfolio_max_drawdown"])
-sharpe    = float(test_row["portfolio_sharpe"])
+c1, c2, c3, c4 = st.columns(4)
 
 c1.metric(
     label="IC Mean",
     value=f"{ic_mean:.4f}",
-    delta="vs 0 (signal)",
-    delta_color="normal",
+    delta="cross-sectional signal",
+    delta_color="off",
 )
 c2.metric(
     label="Sharpe Ratio (annualised)",
     value=f"{sharpe:.3f}",
     delta=f"ICIR: {icir:.3f}",
-    delta_color="normal",
+    delta_color="off",
 )
 c3.metric(
     label="Cumulative Return",
@@ -160,25 +157,21 @@ st.markdown("<hr/>", unsafe_allow_html=True)
 # ---------------------------------------------------------------------------
 st.markdown("#### Weekly Stock Rankings — Predicted vs Realised Return")
 st.markdown(
-    "<span style='color:#6c757d;font-size:0.85rem;'>"
+    "<div class='subtitle'>"
     "Select a rebalancing date to view the model's cross-sectional ranking. "
-    "🟢 Top 10 = long positions · 🔴 Bottom 10 = short positions."
-    "</span>",
+    "Top 10 = long positions (green) · Bottom 10 = short positions (red)."
+    "</div>",
     unsafe_allow_html=True,
 )
+st.write("")
 
-# Use every-5th date to match backtest rebalancing periods
-all_dates   = sorted(scored_df["date"].unique())
-period_dates = all_dates[::5]
-
-# Format for display
-date_labels = {d: d.strftime("%Y-%m-%d") for d in period_dates}
+date_labels = {d: d.strftime("%Y-%m-%d  (%a)") for d in rebalance_dates}
 
 selected_date = st.selectbox(
-    "Select rebalancing date",
-    options=period_dates,
+    "Rebalancing date",
+    options=rebalance_dates,
     format_func=lambda d: date_labels[d],
-    index=len(period_dates) // 2,   # default to middle of test period
+    index=len(rebalance_dates) // 2,
 )
 
 # Filter and rank
@@ -192,47 +185,69 @@ day_df["Rank"] = day_df.index + 1
 day_df = day_df.rename(columns={
     "ticker":     "Ticker",
     "prediction": "Predicted Score",
-    "target_5d":  "Realised Return",
+    "target_5d":  "Actual Realised Return",
 })
-display_df = day_df[["Rank", "Ticker", "Predicted Score", "Realised Return"]].copy()
-
+display_df = day_df[["Rank", "Ticker", "Predicted Score", "Actual Realised Return"]].copy()
 n_stocks = len(display_df)
 
-# ------ Styling ------
-LONG_BG  = "#eaf7f2"   # light green
-SHORT_BG = "#fdecea"   # light red
-ROW_ALT  = "#fafafa"
+# ------ Summary metrics for this week ------
+top10_ret = display_df.head(10)["Actual Realised Return"].mean()
+bot10_ret = display_df.tail(10)["Actual Realised Return"].mean()
+ls_spread = top10_ret - bot10_ret
 
-def _style_table(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
+# Lookup the realised strategy return for this rebalance date (if present)
+aligned_row = aligned_df[aligned_df["date"] == selected_date]
+strat_ret = float(aligned_row["strategy_return"].iloc[0]) if len(aligned_row) else float("nan")
+spy_ret   = float(aligned_row["spy_return_5d"].iloc[0])   if len(aligned_row) else float("nan")
+
+sm1, sm2, sm3, sm4 = st.columns(4)
+sm1.metric("Date",                selected_date.strftime("%d %b %Y"))
+sm2.metric("Top-10 Avg Return",   f"{top10_ret:+.4f}",
+           delta="long leg",  delta_color="off")
+sm3.metric("Bottom-10 Avg Return", f"{bot10_ret:+.4f}",
+           delta="short leg", delta_color="off")
+sm4.metric("Long/Short Spread",   f"{ls_spread:+.4f}",
+           delta=("alpha captured" if ls_spread > 0 else "alpha missed"),
+           delta_color=("normal" if ls_spread > 0 else "inverse"))
+
+st.write("")
+
+# ------ Table styling ------
+LONG_BG  = "#e6f7ef"   # light green
+SHORT_BG = "#fdeceb"   # light red
+ROW_ALT  = "#fafbfc"
+
+
+def _style_table(df: pd.DataFrame):
     n = len(df)
-    top10_idx    = list(range(min(10, n)))
-    bottom10_idx = list(range(max(0, n - 10), n))
+    top10_idx    = set(range(min(10, n)))
+    bottom10_idx = set(range(max(0, n - 10), n))
 
     def highlight(row):
         i = row.name
         if i in top10_idx:
-            return ["background-color: " + LONG_BG] * len(row)
-        elif i in bottom10_idx:
-            return ["background-color: " + SHORT_BG] * len(row)
-        elif i % 2 == 0:
-            return ["background-color: " + ROW_ALT] * len(row)
-        else:
-            return [""] * len(row)
+            return [f"background-color: {LONG_BG}; color: #0b6b4a;"] * len(row)
+        if i in bottom10_idx:
+            return [f"background-color: {SHORT_BG}; color: #a11f1f;"] * len(row)
+        if i % 2 == 0:
+            return [f"background-color: {ROW_ALT};"] * len(row)
+        return [""] * len(row)
 
     styled = (
         df.style
         .apply(highlight, axis=1)
         .format({
-            "Predicted Score":  "{:.5f}",
-            "Realised Return":  "{:+.4f}",
+            "Predicted Score":        "{:.5f}",
+            "Actual Realised Return": "{:+.4f}",
         })
-        .set_properties(**{"font-size": "0.88rem"})
+        .set_properties(**{"font-size": "0.88rem", "padding": "6px 10px"})
         .set_table_styles([
             {"selector": "thead th",
              "props": [("background-color", "#f1f3f5"),
                        ("font-weight", "600"),
                        ("font-size", "0.82rem"),
                        ("text-align", "left"),
+                       ("padding", "8px 10px"),
                        ("border-bottom", "2px solid #dee2e6")]},
             {"selector": "tbody tr:hover",
              "props": [("filter", "brightness(0.97)")]},
@@ -242,24 +257,10 @@ def _style_table(df: pd.DataFrame) -> "pd.io.formats.style.Styler":
     return styled
 
 
-# Summary stats row above table
-top10_ret  = display_df.head(10)["Realised Return"].mean()
-bot10_ret  = display_df.tail(10)["Realised Return"].mean()
-ls_spread  = top10_ret - bot10_ret
-
-sm1, sm2, sm3, sm4 = st.columns(4)
-sm1.metric("Date",              selected_date.strftime("%d %b %Y"))
-sm2.metric("Top-10 Avg Return", f"{top10_ret:+.4f}",
-           delta="long leg", delta_color="off")
-sm3.metric("Bottom-10 Avg Return", f"{bot10_ret:+.4f}",
-           delta="short leg", delta_color="off")
-sm4.metric("L/S Spread",        f"{ls_spread:+.4f}",
-           delta="alpha proxy", delta_color="normal" if ls_spread > 0 else "inverse")
-
 st.dataframe(
     _style_table(display_df),
     use_container_width=True,
-    height=min(42 * n_stocks + 38, 680),
+    height=min(40 * n_stocks + 42, 700),
 )
 
 st.markdown("<hr/>", unsafe_allow_html=True)
@@ -275,7 +276,7 @@ with img_col1:
     equity_path = PLOTS / "plot3_equity_curves.png"
     if equity_path.exists():
         st.image(str(equity_path), use_container_width=True)
-        st.caption("Equity Curves — Ensemble vs SPY vs Naive Momentum (Test 2024)")
+        st.caption("Equity Curves — Ensemble vs SPY vs Naive")
     else:
         st.warning(f"Plot not found: {equity_path}")
 
@@ -283,7 +284,7 @@ with img_col2:
     ic_path = PLOTS / "plot2_ic_over_time.png"
     if ic_path.exists():
         st.image(str(ic_path), use_container_width=True)
-        st.caption("IC Over Time — Validation Period (2023–2024), 10-period rolling mean")
+        st.caption("IC Over Time — Validation Period")
     else:
         st.warning(f"Plot not found: {ic_path}")
 
@@ -294,8 +295,8 @@ st.markdown("<hr/>", unsafe_allow_html=True)
 # ---------------------------------------------------------------------------
 st.markdown(
     "<div class='footer'>"
-    "Cross-Sectional Equity ML · Machine Learning Course Project · "
-    "Ensemble: Ridge 40% + ElasticNet 60% · Universe: S&P 100 · "
+    "Cross-Sectional Equity ML &nbsp;·&nbsp; Machine Learning Course Project &nbsp;·&nbsp; "
+    "Ensemble: Ridge 40% + ElasticNet 60% &nbsp;·&nbsp; Universe: S&P 100 &nbsp;·&nbsp; "
     "Data: 2015–2024 via yfinance"
     "</div>",
     unsafe_allow_html=True,
@@ -306,24 +307,30 @@ st.markdown(
 # ---------------------------------------------------------------------------
 @st.cache_data
 def _find_best_demo_dates() -> pd.DataFrame:
-    res = []
-    for dt in period_dates:
+    rows = []
+    for dt in rebalance_dates:
         day = scored_df[scored_df["date"] == dt].sort_values("prediction", ascending=False)
-        if len(day) < 10:
+        if len(day) < 20:
             continue
-        res.append({
+        top10_avg = day.head(10)["target_5d"].mean()
+        bot10_avg = day.tail(10)["target_5d"].mean()
+        rows.append({
             "date":             dt.strftime("%Y-%m-%d"),
-            "top10_avg_return": day.head(10)["Realised Return"].mean()
-            if "Realised Return" in day.columns
-            else day.head(10)["target_5d"].mean(),
+            "top10_avg_return": top10_avg,
+            "bot10_avg_return": bot10_avg,
+            "ls_spread":        top10_avg - bot10_avg,
         })
-    return pd.DataFrame(res).sort_values("top10_avg_return", ascending=False)
+    return pd.DataFrame(rows).sort_values("top10_avg_return", ascending=False)
 
 
 _demo = _find_best_demo_dates()
-print("\n" + "=" * 60)
-print("BEST DEMO DATES (top-10 long leg highest avg realised return)")
-print("=" * 60)
-for i, row in _demo.head(3).iterrows():
-    print(f"  {row['date']}  →  top-10 avg realised return = {row['top10_avg_return']:+.4f}")
-print("=" * 60 + "\n")
+print("\n" + "=" * 72)
+print(" BEST DEMO DATES — top-10 long leg with highest avg realised 5-day return")
+print("=" * 72)
+for _, row in _demo.head(3).iterrows():
+    print(
+        f"  {row['date']}   top10={row['top10_avg_return']:+.4f}"
+        f"   bot10={row['bot10_avg_return']:+.4f}"
+        f"   L/S spread={row['ls_spread']:+.4f}"
+    )
+print("=" * 72 + "\n")
