@@ -26,34 +26,55 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-        .stApp { background-color: #ffffff; }
+        /* ── Force light background everywhere ─────────────────────── */
+        .stApp,
+        [data-testid="stAppViewContainer"],
+        [data-testid="stHeader"],
+        [data-testid="stToolbar"],
+        section[data-testid="stSidebar"],
+        .main .block-container          { background-color: #ffffff !important; color: #212529 !important; }
 
+        /* ── Metric cards ───────────────────────────────────────────── */
         [data-testid="metric-container"] {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
+            background: #f8f9fa !important;
+            border: 1px solid #e9ecef !important;
             border-radius: 10px;
             padding: 18px 22px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
         }
-        [data-testid="stMetricLabel"] { font-size: 0.82rem; color: #6c757d; }
-        [data-testid="stMetricValue"] { font-size: 1.7rem; font-weight: 700; color: #212529; }
+        [data-testid="stMetricLabel"]  { font-size: 0.82rem !important; color: #6c757d !important; }
+        [data-testid="stMetricValue"]  { font-size: 1.7rem  !important; font-weight: 700 !important; color: #212529 !important; }
+        [data-testid="stMetricDelta"]  { font-size: 0.78rem !important; }
 
+        /* ── Headings ────────────────────────────────────────────────── */
+        h1, h2, h3, h4, h5 { color: #212529 !important; }
+        .subtitle { color: #6c757d !important; font-size: 0.9rem; }
+
+        /* ── Selectbox / dropdown ────────────────────────────────────── */
+        [data-testid="stSelectbox"] > div > div {
+            background-color: #ffffff !important;
+            color: #212529 !important;
+            border: 1px solid #ced4da !important;
+        }
+
+        /* ── Dataframe wrapper ───────────────────────────────────────── */
+        [data-testid="stDataFrame"],
+        [data-testid="stDataFrame"] iframe,
+        .stDataFrame                    { background-color: #ffffff !important; }
+
+        /* ── Dividers & layout ───────────────────────────────────────── */
         hr { border: none; border-top: 1px solid #e9ecef; margin: 1.2rem 0; }
+        .block-container { padding-top: 1.5rem; max-width: 1400px; }
 
+        /* ── Footer ──────────────────────────────────────────────────── */
         .footer {
             text-align: center;
-            color: #adb5bd;
+            color: #adb5bd !important;
             font-size: 0.78rem;
             margin-top: 3rem;
             padding-top: 1rem;
             border-top: 1px solid #e9ecef;
         }
-
-        .block-container { padding-top: 1.5rem; max-width: 1400px; }
-
-        h1, h2, h3, h4 { color: #212529; }
-
-        .subtitle { color: #6c757d; font-size: 0.9rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -215,7 +236,8 @@ st.write("")
 # ------ Table styling ------
 LONG_BG  = "#e6f7ef"   # light green
 SHORT_BG = "#fdeceb"   # light red
-ROW_ALT  = "#fafbfc"
+ROW_EVEN = "#fafbfc"   # light grey stripe
+ROW_ODD  = "#ffffff"   # pure white  ← explicit, never inherit dark-mode bg
 
 
 def _style_table(df: pd.DataFrame):
@@ -229,9 +251,9 @@ def _style_table(df: pd.DataFrame):
             return [f"background-color: {LONG_BG}; color: #0b6b4a;"] * len(row)
         if i in bottom10_idx:
             return [f"background-color: {SHORT_BG}; color: #a11f1f;"] * len(row)
-        if i % 2 == 0:
-            return [f"background-color: {ROW_ALT};"] * len(row)
-        return [""] * len(row)
+        # Every neutral row gets an explicit light bg — never inherit dark theme
+        bg = ROW_EVEN if i % 2 == 0 else ROW_ODD
+        return [f"background-color: {bg}; color: #212529;"] * len(row)
 
     styled = (
         df.style
@@ -260,6 +282,7 @@ def _style_table(df: pd.DataFrame):
 st.dataframe(
     _style_table(display_df),
     use_container_width=True,
+    hide_index=True,
     height=min(40 * n_stocks + 42, 700),
 )
 
