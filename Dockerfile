@@ -12,6 +12,7 @@ RUN pip install --upgrade pip \
 	&& pip install -r /app/requirements.txt
 
 COPY . /app
+COPY README.md /README.md
 
 RUN sed -i 's/\r$//' /app/scripts/docker_entrypoint.sh \
 	&& chmod +x /app/scripts/docker_entrypoint.sh
