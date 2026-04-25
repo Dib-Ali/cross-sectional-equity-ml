@@ -55,12 +55,11 @@ cross-sectional-equity-ml/
 
 ## Quick Start — Option A: Docker 
 
-The Docker image includes all pre-computed results and the dataset. No retraining required.
+Docker now builds locally from the included `Dockerfile`, so anyone who clones the repo can run it without needing access to a pre-published image.
 
 ```bash
-
-#  with docker-compose
-docker-compose up
+# Build and start the app (first run can take a few minutes)
+docker compose up --build
 ```
 
 Then open **http://localhost:8501** in your browser.
