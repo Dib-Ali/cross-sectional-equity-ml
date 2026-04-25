@@ -37,3 +37,7 @@ csvfiles
 
 notes_after_first_run.txt
 notes_after_second_run.txt
+
+# Local environment overrides
+.env
+!.env.example
