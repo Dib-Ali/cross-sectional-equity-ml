@@ -55,11 +55,26 @@ cross-sectional-equity-ml/
 
 ## Quick Start — Option A: Docker 
 
-Docker now builds locally from the included `Dockerfile`, so anyone who clones the repo can run it without needing access to a pre-published image.
+You can run this project with Docker in two ways:
+
+### A1. Clone from GitHub and build locally
 
 ```bash
+git clone https://github.com/Dib-Ali/cross-sectional-equity-ml.git
+cd cross-sectional-equity-ml
+
 # Build and start the app (first run can take a few minutes)
 docker compose up --build
+```
+
+### A2. Pull pre-built image from Docker Hub
+
+```bash
+# If the Docker Hub repository is private, log in first
+docker login
+
+docker pull antsxd/machine_learning_cross_sectional_equity_return_predictor:v1.0.0
+docker run --rm -p 8501:8501 antsxd/machine_learning_cross_sectional_equity_return_predictor:v1.0.0
 ```
 
 Then open **http://localhost:8501** in your browser.
