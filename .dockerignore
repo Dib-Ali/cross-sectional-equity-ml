@@ -21,7 +21,12 @@ Thumbs.db
 # Non-runtime project artifacts
 csvfiles/
 presentation/
-data/
+# Exclude generated data by default, but keep the raw source file in the image
+data/*
+!data/raw/
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/prices_raw.csv
 notes_after_first_run.txt
 notes_after_second_run.txt
 proposal.txt
