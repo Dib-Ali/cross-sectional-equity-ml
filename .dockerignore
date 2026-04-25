@@ -1,0 +1,27 @@
+# Ignore local virtual environments
+finance/
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Git and editor files
+.git/
+.gitignore
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Non-runtime project artifacts
+csvfiles/
+presentation/
+data/
+notes_after_first_run.txt
+notes_after_second_run.txt
+proposal.txt
