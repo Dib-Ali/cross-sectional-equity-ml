@@ -70,11 +70,9 @@ docker compose up --build
 ### A2. Pull pre-built image from Docker Hub
 
 ```bash
-# If the Docker Hub repository is private, log in first
-docker login
 
-docker pull antsxd/machine_learning_cross_sectional_equity_return_predictor:v1.0.0
-docker run --rm -p 8501:8501 antsxd/machine_learning_cross_sectional_equity_return_predictor:v1.0.0
+docker pull antsxd/machine_learning_cross_sectional_equity_return_predictor:latest
+docker run --rm -p 8501:8501 antsxd/machine_learning_cross_sectional_equity_return_predictor:latest
 ```
 
 Then open **http://localhost:8501** in your browser.
